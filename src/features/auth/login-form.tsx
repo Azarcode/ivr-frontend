@@ -106,7 +106,7 @@ export function LoginForm() {
       </form>
 
       {/* Footer link */}
-      <div className="mt-6 text-center text-xs text-neutral-500">
+      {/* <div className="mt-6 text-center text-xs text-neutral-500">
         Need an admin account?{' '}
         <Link
           href="/register"
@@ -114,7 +114,7 @@ export function LoginForm() {
         >
           Register here
         </Link>
-      </div>
+      </div> */}
     </div>
   );
 }
