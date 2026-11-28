@@ -1,16 +1,18 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2 } from 'lucide-react';
+import { AlertCircle, FileText, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { FormField } from '@/components/shared/form-field';
+import { cn } from '@/lib/utils';
 import {
   businessSchema,
   BusinessFormValues,
+  STRATEGY_CONTEXT_MAX_LENGTH,
 } from '@/features/business/schemas/business.schema';
 import {
   useCreateBusiness,
@@ -31,6 +33,7 @@ export function BusinessForm({ initialData }: BusinessFormProps) {
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors },
@@ -93,6 +96,23 @@ export function BusinessForm({ initialData }: BusinessFormProps) {
       createBusiness(payload);
     }
   };
+
+  const strategyValue =
+    useWatch({
+      control,
+      name: 'strategyDescription',
+    }) ?? '';
+  const strategyLength = strategyValue.length;
+  const strategyRemaining = STRATEGY_CONTEXT_MAX_LENGTH - strategyLength;
+  const strategyUsagePct = Math.min(
+    100,
+    Math.round((strategyLength / STRATEGY_CONTEXT_MAX_LENGTH) * 100),
+  );
+  const isApproachingStrategyLimit =
+    strategyLength >= STRATEGY_CONTEXT_MAX_LENGTH * 0.9 &&
+    strategyLength < STRATEGY_CONTEXT_MAX_LENGTH;
+  const isAtStrategyLimit = strategyLength === STRATEGY_CONTEXT_MAX_LENGTH;
+  const isOverStrategyLimit = strategyLength > STRATEGY_CONTEXT_MAX_LENGTH;
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 max-w-4xl">
@@ -261,30 +281,119 @@ export function BusinessForm({ initialData }: BusinessFormProps) {
 
       {/* Section 2: Business Strategy & Context */}
       <div className="border border-neutral-200 rounded-md p-6 bg-white space-y-4">
-        <div>
-          <h2 className="text-base font-semibold text-neutral-900">
-            Business Strategy & Context
-          </h2>
-          <p className="text-xs text-neutral-500 mt-1">
-            Foundational knowledge and behavior guidelines for your AI assistant
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 pb-3 border-b border-neutral-100">
+          <div className="flex items-start gap-2.5">
+            <div className="mt-0.5 rounded-md bg-neutral-100 p-1.5 text-neutral-700 shrink-0">
+              <FileText className="h-4 w-4" />
+            </div>
+            <div>
+              <label
+                htmlFor="strategyDescription"
+                className="block text-base font-semibold text-neutral-900 cursor-pointer"
+              >
+                Business Strategy &amp; Context
+              </label>
+              <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
+                Provide detailed information about your business, services, pricing,
+                policies, target customers, FAQs, sales approach, and instructions
+                that will help your AI agent handle conversations accurately.
+              </p>
+            </div>
+          </div>
+
+          <div
+            aria-live="polite"
+            className={cn(
+              'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium tabular-nums border transition-colors self-start shrink-0',
+              isOverStrategyLimit || errors.strategyDescription
+                ? 'bg-red-50 text-red-700 border-red-200'
+                : isAtStrategyLimit
+                  ? 'bg-amber-50 text-amber-800 border-amber-300'
+                  : isApproachingStrategyLimit
+                    ? 'bg-amber-50/70 text-amber-700 border-amber-200'
+                    : 'bg-neutral-50 text-neutral-600 border-neutral-200',
+            )}
+          >
+            {strategyLength.toLocaleString()} /{' '}
+            {STRATEGY_CONTEXT_MAX_LENGTH.toLocaleString()}
+          </div>
         </div>
 
-        <FormField
-          label="Business Strategy & Context"
-          htmlFor="strategyDescription"
-          error={errors.strategyDescription?.message}
-          helperText="This information will be used by your AI assistant to understand your business and respond to customer questions appropriately."
-        >
+        <div className="space-y-2.5">
           <Textarea
             id="strategyDescription"
-            rows={7}
-            placeholder="Describe your business, target customers, main services, business goals, customer support approach, important policies and how you want your AI assistant to represent your business."
-            className="min-h-[160px] text-sm leading-relaxed"
+            rows={12}
+            placeholder="Enter business overview, product/service details, pricing rules, FAQs, tone guidelines, escalation instructions, and anything the AI receptionist should know..."
+            className={cn(
+              'min-h-[280px] max-h-[520px] resize-y overflow-y-auto px-3.5 py-3 text-sm leading-6 transition-colors',
+              (isOverStrategyLimit || errors.strategyDescription) &&
+                'border-red-400 focus-visible:ring-red-600 focus-visible:border-red-600',
+              !isOverStrategyLimit &&
+                !errors.strategyDescription &&
+                (isApproachingStrategyLimit || isAtStrategyLimit) &&
+                'border-amber-300 focus-visible:ring-amber-500 focus-visible:border-amber-500',
+            )}
             disabled={isSubmitting}
             {...register('strategyDescription')}
           />
-        </FormField>
+
+          {/* Subtle progress bar */}
+          <div className="h-1 w-full rounded-full bg-neutral-100 overflow-hidden">
+            <div
+              className={cn(
+                'h-full rounded-full transition-all duration-150',
+                isOverStrategyLimit || errors.strategyDescription
+                  ? 'bg-red-600'
+                  : isApproachingStrategyLimit || isAtStrategyLimit
+                    ? 'bg-amber-500'
+                    : 'bg-neutral-800',
+              )}
+              style={{ width: `${strategyUsagePct}%` }}
+            />
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 text-xs">
+            {errors.strategyDescription?.message || isOverStrategyLimit ? (
+              <p className="inline-flex items-center gap-1.5 text-red-600 font-medium">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                <span>
+                  {errors.strategyDescription?.message ||
+                    `Character limit exceeded by ${Math.abs(strategyRemaining).toLocaleString()} characters. Please keep it within 20,000 characters.`}
+                </span>
+              </p>
+            ) : isAtStrategyLimit ? (
+              <p className="inline-flex items-center gap-1.5 text-amber-800 font-medium">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                <span>
+                  Character limit reached (20,000 / 20,000). Remove characters to add more text.
+                </span>
+              </p>
+            ) : isApproachingStrategyLimit ? (
+              <p className="text-amber-700">
+                Approaching the 20,000 character limit ({strategyRemaining.toLocaleString()} remaining).
+              </p>
+            ) : (
+              <p className="text-neutral-500">
+                Supports detailed multi-section context, product guides, and pasted FAQs.
+              </p>
+            )}
+
+            <span
+              className={cn(
+                'tabular-nums shrink-0',
+                isOverStrategyLimit
+                  ? 'text-red-600 font-medium'
+                  : isApproachingStrategyLimit || isAtStrategyLimit
+                    ? 'text-amber-700 font-medium'
+                    : 'text-neutral-400',
+              )}
+            >
+              {isOverStrategyLimit
+                ? `${Math.abs(strategyRemaining).toLocaleString()} over limit`
+                : `${strategyRemaining.toLocaleString()} remaining`}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Action Footer */}

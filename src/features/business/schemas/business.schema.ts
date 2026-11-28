@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+export const STRATEGY_CONTEXT_MAX_LENGTH = 20000;
+
 export const businessSchema = z.object({
   name: z
     .string({
@@ -79,7 +81,10 @@ export const businessSchema = z.object({
   strategyDescription: z
     .string()
     .trim()
-    .max(5000, 'Strategy description cannot exceed 5000 characters')
+    .max(
+      STRATEGY_CONTEXT_MAX_LENGTH,
+      'Business strategy & context cannot exceed 20,000 characters',
+    )
     .optional()
     .or(z.literal('')),
 });
